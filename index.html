@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
     <title>SafeSite Enterprise TimeClock</title>
     <style>
         :root {
@@ -264,11 +265,12 @@
             </div>
         </div>
     </div>
-<script>
+
+    <script>
         // Base Authentication System
         class EnterpriseAuthSystem {
             constructor() {
-                this.users = JSON.parse(localStorage.getItem('users') || '[]');
+                this.users = JSON.parse(localStorage.getItem('users')) || [];
                 this.currentUser = null;
                 this.initializeApp();
             }
@@ -278,18 +280,13 @@
             }
 
             bindAuthEvents() {
-                // Login Form
-                document.getElementById('login-form')?.addEventListener('submit', this.handleLogin.bind(this));
-                
-                // Registration Links and Form
-                document.getElementById('register-link')?.addEventListener('click', this.showRegistrationScreen.bind(this));
-                document.getElementById('back-to-login')?.addEventListener('click', this.showLoginScreen.bind(this));
-                document.getElementById('registration-form')?.addEventListener('submit', this.handleRegistration.bind(this));
-                
-                // Password Reset Links and Form
-                document.getElementById('forgot-password-link')?.addEventListener('click', this.showPasswordResetScreen.bind(this));
-                document.getElementById('back-to-login-reset')?.addEventListener('click', this.showLoginScreen.bind(this));
-                document.getElementById('password-reset-form')?.addEventListener('submit', this.handlePasswordReset.bind(this));
+                document.getElementById('login-form')?.addEventListener('submit', (e) => this.handleLogin(e));
+                document.getElementById('register-link')?.addEventListener('click', () => this.showRegistrationScreen());
+                document.getElementById('back-to-login')?.addEventListener('click', () => this.showLoginScreen());
+                document.getElementById('registration-form')?.addEventListener('submit', (e) => this.handleRegistration(e));
+                document.getElementById('forgot-password-link')?.addEventListener('click', () => this.showPasswordResetScreen());
+                document.getElementById('back-to-login-reset')?.addEventListener('click', () => this.showLoginScreen());
+                document.getElementById('password-reset-form')?.addEventListener('submit', (e) => this.handlePasswordReset(e));
             }
 
             showToast(message, isError = false) {
@@ -323,10 +320,23 @@
                 document.getElementById('dashboard-screen').style.display = 'none';
             }
 
+            showDashboard() {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('registration-screen').style.display = 'none';
+                document.getElementById('password-reset-screen').style.display = 'none';
+                document.getElementById('dashboard-screen').style.display = 'block';
+                
+                document.getElementById('user-welcome').textContent = `Welcome, ${this.currentUser.fullName}`;
+                document.getElementById('user-department').textContent = `Department: ${this.currentUser.department}`;
+            }
+
             handleLogin(e) {
                 e.preventDefault();
-                const username = document.getElementById('username').value;
+                const username = document.getElementById('username').value.trim();
                 const password = document.getElementById('password').value;
+
+                console.log('Stored users:', this.users);
+                console.log('Attempting login with:', username);
 
                 const user = this.users.find(u => u.username === username && u.password === password);
                 
@@ -341,12 +351,17 @@
 
             handleRegistration(e) {
                 e.preventDefault();
-                const fullName = document.getElementById('reg-fullname').value;
-                const username = document.getElementById('reg-username').value;
-                const email = document.getElementById('reg-email').value;
+                const fullName = document.getElementById('reg-fullname').value.trim();
+                const username = document.getElementById('reg-username').value.trim();
+                const email = document.getElementById('reg-email').value.trim();
                 const password = document.getElementById('reg-password').value;
                 const confirmPassword = document.getElementById('reg-confirm-password').value;
                 const department = document.getElementById('reg-department').value;
+
+                if (!fullName || !username || !email || !password || !department) {
+                    this.showToast('Please fill in all fields', true);
+                    return;
+                }
 
                 if (password !== confirmPassword) {
                     this.showToast('Passwords do not match', true);
@@ -359,7 +374,7 @@
                 }
 
                 const newUser = {
-                    id: Date.now(),
+                    id: Date.now().toString(),
                     fullName,
                     username,
                     email,
@@ -370,15 +385,23 @@
                 };
 
                 this.users.push(newUser);
-                localStorage.setItem('users', JSON.stringify(this.users));
-
-                this.showToast('Registration Successful!');
-                this.showLoginScreen();
+                
+                try {
+                    localStorage.setItem('users', JSON.stringify(this.users));
+                    console.log('User registered successfully:', newUser.username);
+                    console.log('Updated users array:', this.users);
+                    
+                    this.showToast('Registration Successful!');
+                    this.showLoginScreen();
+                } catch (error) {
+                    console.error('Error saving to localStorage:', error);
+                    this.showToast('Registration failed. Please try again.', true);
+                }
             }
 
             handlePasswordReset(e) {
                 e.preventDefault();
-                const email = document.getElementById('reset-email').value;
+                const email = document.getElementById('reset-email').value.trim();
                 const user = this.users.find(u => u.email === email);
 
                 if (user) {
@@ -390,22 +413,22 @@
             }
         }
 
-        // TimeClock System that extends the base Authentication System
+        // TimeClock System
         class TimeClockSystem extends EnterpriseAuthSystem {
             constructor() {
                 super();
-                this.timeEntries = JSON.parse(localStorage.getItem('timeEntries') || '[]');
+                this.timeEntries = JSON.parse(localStorage.getItem('timeEntries')) || [];
                 this.initializeTimeClock();
             }
 
             initializeTimeClock() {
-                document.getElementById('clock-in-btn')?.addEventListener('click', this.handleClockIn.bind(this));
-                document.getElementById('clock-out-btn')?.addEventListener('click', this.handleClockOut.bind(this));
-                document.getElementById('break-btn')?.addEventListener('click', this.handleBreak.bind(this));
-                document.getElementById('logout-btn')?.addEventListener('click', this.handleLogout.bind(this));
+                document.getElementById('clock-in-btn')?.addEventListener('click', () => this.handleClockIn());
+                document.getElementById('clock-out-btn')?.addEventListener('click', () => this.handleClockOut());
+                document.getElementById('break-btn')?.addEventListener('click', () => this.handleBreak());
+                document.getElementById('logout-btn')?.addEventListener('click', () => this.handleLogout());
 
                 this.updateClockDisplay();
-                setInterval(this.updateClockDisplay.bind(this), 1000);
+                setInterval(() => this.updateClockDisplay(), 1000);
             }
 
             updateClockDisplay() {
@@ -418,12 +441,11 @@
             handleClockIn() {
                 if (!this.currentUser) return;
 
-                const clockInTime = new Date();
                 const entry = {
                     userId: this.currentUser.id,
                     type: 'clock-in',
-                    timestamp: clockInTime.toISOString(),
-                    date: clockInTime.toLocaleDateString()
+                    timestamp: new Date().toISOString(),
+                    date: new Date().toLocaleDateString()
                 };
 
                 this.timeEntries.push(entry);
@@ -439,12 +461,11 @@
             handleClockOut() {
                 if (!this.currentUser) return;
 
-                const clockOutTime = new Date();
                 const entry = {
                     userId: this.currentUser.id,
                     type: 'clock-out',
-                    timestamp: clockOutTime.toISOString(),
-                    date: clockOutTime.toLocaleDateString()
+                    timestamp: new Date().toISOString(),
+                    date: new Date().toLocaleDateString()
                 };
 
                 this.timeEntries.push(entry);
@@ -501,14 +522,14 @@
                 `).join('');
             }
 
+            handleLogout() {
+                this.currentUser = null;
+                this.showLoginScreen();
+                this.showToast('Logged out successfully');
+            }
+
             showDashboard() {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('registration-screen').style.display = 'none';
-                document.getElementById('password-reset-screen').style.display = 'none';
-                document.getElementById('dashboard-screen').style.display = 'block';
-                
-                document.getElementById('user-welcome').textContent = `Welcome, ${this.currentUser.fullName}`;
-                document.getElementById('user-department').textContent = `Department: ${this.currentUser.department}`;
+                super.showDashboard();
                 
                 const lastEntry = this.timeEntries
                     .filter(entry => entry.userId === this.currentUser.id)
@@ -523,12 +544,6 @@
                 }
 
                 this.updateTimeEntries();
-            }
-
-            handleLogout() {
-                this.currentUser = null;
-                this.showLoginScreen();
-                this.showToast('Logged out successfully');
             }
         }
 
