@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeSite Enterprise TimeClock</title>
+    <style>
+        :root {
+            --primary-red: #d9534f;
+            --dark-red: #a94442;
+            --deep-black: #121212;
+            --soft-black: #1e1e1e;
+            --light-gray: #f4f4f4;
+            --text-white: #f1f1f1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Roboto', 'Arial', sans-serif;
+            background-color: var(--soft-black);
+            color: var(--text-white);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .enterprise-dashboard {
+            display: flex;
+            flex-direction: column;
+            background-color: var(--deep-black);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(221, 44, 0, 0.2);
+            overflow: hidden;
+            border: 2px solid var(--primary-red);
+            width: 100%;
+        }
+
+        .dashboard-wrapper {
+            display: flex;
+            width: 100%;
+        }
+
+        .enterprise-sidebar {
+            background: linear-gradient(45deg, var(--deep-black), var(--soft-black));
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid var(--primary-red);
+            width: 250px;
+        }
+
+        .enterprise-logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            color: var(--primary-red);
+            font-weight: bold;
+        }
+
+        .enterprise-nav {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .nav-item {
+            width: 100%;
+            text-align: center;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            color: var(--text-white);
+            text-decoration: none;
+            border-radius: 6px;
+            background-color: rgba(217, 83, 79, 0.1);
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background-color: rgba(217, 83, 79, 0.2);
+            border-left-color: var(--primary-red);
+        }
+
+        .enterprise-content {
+            flex-grow: 1;
+            padding: 25px;
+            background-color: var(--soft-black);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .timesheet-card {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--deep-black);
+            border-radius: 8px;
+            border: 1px solid var(--primary-red);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 6px 20px rgba(221, 44, 0, 0.1);
+        }
+
+        .enterprise-btn {
+            background-color: var(--primary-red);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+        }
+
+        .enterprise-btn:hover {
+            background-color: var(--dark-red);
+            transform: scale(1.05);
+        }
+
+        .enterprise-table {
+            width: 100%;
+            max-width: 600px;
+            border-collapse: collapse;
+            background-color: var(--deep-black);
+        }
+
+        .enterprise-table th, 
+        .enterprise-table td {
+            border: 1px solid var(--primary-red);
+            padding: 12px;
+            text-align: center;
+            color: var(--text-white);
+        }
+
+        .enterprise-table th {
+            background-color: rgba(217, 83, 79, 0.2);
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        @media screen and (max-width: 767px) {
+            .dashboard-wrapper {
+                flex-direction: column;
+            }
+            .enterprise-sidebar {
+                width: 100%;
+            }
+            .enterprise-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .nav-item {
+                flex-grow: 1;
+                margin: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="enterprise-dashboard">
+            <div class="dashboard-wrapper">
+                <div class="enterprise-sidebar">
+                    <div class="enterprise-logo">
+                        <h2>SafeSite</h2>
+                    </div>
+                    <nav class="enterprise-nav">
+                        <a href="#" class="nav-item active" data-section="dashboard">Dashboard</a>
+                        <a href="#" class="nav-item" data-section="clock">Clock In/Out</a>
+                        <a href="#" class="nav-item" data-section="timesheet">Timesheet</a>
+                        <a href="#" class="nav-item" data-section="reports">Reports</a>
+                        <a href="#" class="nav-item" data-section="profile">Profile</a>
+                    </nav>
+                </div>
+                <div class="enterprise-content" id="content-area">
+                    <h1>Enterprise Time Tracking</h1>
+                    
+                    <div class="timesheet-card">
+                        <h3>Today's Performance</h3>
+                        <p id="current-time">Current Time: <span id="live-time">00:00:00</span></p>
+                        <p id="clock-status">Clock In: <span id="clock-time">--:--</span></p>
+                        <p>Current Duration: <span id="duration">0h 0m</span></p>
+                        <button id="clock-btn" class="enterprise-btn">Clock In</button>
+                    </div>
+
+                    <table class="enterprise-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Clock In</th>
+                                <th>Clock Out</th>
+                                <th>Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timesheet-body">
+                            <tr>
+                                <td>2024-01-15</td>
+                                <td>08:30 AM</td>
+                                <td>05:15 PM</td>
+                                <td>8.75</td>
+                            </tr>
+                            <tr>
+                                <td>2024-01-14</td>
+                                <td>08:45 AM</td>
+                                <td>04:50 PM</td>
+                                <td>8.0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Local Storage Management
+        class TimeclockStorage {
+            static getTimesheets() {
+                return JSON.parse(localStorage.getItem('timesheets') || '[]');
+            }
+
+            static saveTimesheets(timesheets) {
+                localStorage.setItem('timesheets', JSON.stringify(timesheets));
+            }
+
+            static addTimesheet(entry) {
+                const timesheets = this.getTimesheets();
+                timesheets.unshift(entry);
+                this.saveTimesheets(timesheets);
+            }
+        }
+
+        // Main Timeclock Functionality
+        class Timeclock {
+            constructor() {
+                this.isClockIn = true;
+                this.clockInTime = null;
+                this.initializeElements();
+                this.setupEventListeners();
+                this.loadTimesheets();
+                this.startLiveClock();
+            }
+
+            initializeElements() {
+                this.clockBtn = document.getElementById('clock-btn');
+                this.clockTimeEl = document.getElementById('clock-time');
+                this.durationEl = document.getElementById('duration');
+                this.timesheetBody = document.getElementById('timesheet-body');
+            }
+
+            setupEventListeners() {
+                this.clockBtn.addEventListener('click', () => this.toggleClock());
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', this.handleNavigation);
+                });
+            }
+
+            toggleClock() {
+                const now = new Date();
+                if (this.isClockIn) {
+                    this.clockIn(now);
+                } else {
+                    this.clockOut(now);
+                }
+                this.isClockIn = !this.isClockIn;
+            }
+
+            clockIn(now) {
+                this.clockInTime = now;
+                this.clockTimeEl.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                this.clockBtn.textContent = 'Clock Out';
+                this.clockBtn.style.backgroundColor = 'var(--dark-red)';
+            }
+
+            clockOut(now) {
+                if (this.clockInTime) {
+                    const duration = (now - this.clockInTime) / (1000 * 60 * 60);
+                    this.durationEl.textContent = `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m`;
+                    
+                    const entry = {
+                        date: now.toISOString().split('T')[0],
+                        clockIn: this.clockTimeEl.textContent,
+                        clockOut: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                        hours: duration.toFixed(2)
+                    };
+
+                    TimeclockStorage.addTimesheet(entry);
+                    this.loadTimesheets();
+                }
+
+                this.resetClockOutState();
+            }
+
+            resetClockOutState() {
+                this.clockBtn.textContent = 'Clock In';
+                this.clockBtn.style.backgroundColor = 'var(--primary-red)';
+                this.clockTimeEl.textContent = '--:--';
+                this.clockInTime = null;
+            }
+
+            loadTimesheets() {
+                const timesheets = TimeclockStorage.getTimesheets();
+                this.timesheetBody.innerHTML = timesheets.map(entry => `
+                    <tr>
+                        <td>${entry.date}</td>
+                        <td>${entry.clockIn}</td>
+                        <td>${entry.clockOut}</td>
+                        <td>${entry.hours}</td>
+                    </tr>
+                `).join('');
+            }
+
+            startLiveClock() {
+                const liveTimeEl = document.getElementById('live-time');
+                setInterval(() => {
+                    const now = new Date();
+                    liveTimeEl.textContent = now.toLocaleTimeString();
+                }, 1000);
+            }
+
+            handleNavigation(e) {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                e.target.classList.add('active');
+                console.log(`Navigated to: ${e.target.dataset.section}`);
+            }
+        }
+
+        // Initialize Timeclock on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            new Timeclock();
+        });
+    </script>
+</body>
+</html>
