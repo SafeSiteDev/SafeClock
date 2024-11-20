@@ -91,26 +91,62 @@
             font-size: 0.9em;
         }
 
-        .modal {
+        .dashboard {
             display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.7);
-            justify-content: center;
-            align-items: center;
+            padding: 20px;
+            background-color: var(--deep-black);
+            min-height: 100vh;
         }
 
-        .modal-content {
+        .clock-display {
+            font-size: 3rem;
+            text-align: center;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .status-indicator {
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status-clocked-in {
+            background-color: var(--green-success);
+        }
+
+        .status-clocked-out {
+            background-color: var(--primary-red);
+        }
+
+        .time-log {
+            margin-top: 20px;
             background-color: var(--soft-black);
-            border: 2px solid var(--primary-red);
-            border-radius: 12px;
-            padding: 30px;
-            width: 100%;
-            max-width: 500px;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .time-log-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--primary-red);
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .user-info {
+            background-color: var(--soft-black);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
 
         .toast {
@@ -122,10 +158,21 @@
             color: white;
             border-radius: 5px;
             display: none;
+            z-index: 1000;
         }
 
         .toast.error {
             background-color: var(--primary-red);
+        }
+
+        .clock-controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .clock-controls .enterprise-btn {
+            width: auto;
         }
     </style>
 </head>
@@ -188,7 +235,37 @@
         </div>
     </div>
 
-    <script>
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="dashboard">
+        <div class="container">
+            <div class="dashboard-header">
+                <h2>TimeClock Dashboard</h2>
+                <button id="logout-btn" class="enterprise-btn">Logout</button>
+            </div>
+            
+            <div class="user-info">
+                <h3 id="user-welcome">Welcome, </h3>
+                <p id="user-department">Department: </p>
+            </div>
+
+            <div class="clock-display" id="current-time"></div>
+            
+            <div class="status-indicator" id="clock-status"></div>
+            
+            <div class="clock-controls">
+                <button id="clock-in-btn" class="enterprise-btn">Clock In</button>
+                <button id="clock-out-btn" class="enterprise-btn" style="display: none;">Clock Out</button>
+                <button id="break-btn" class="enterprise-btn">Start Break</button>
+            </div>
+
+            <div class="time-log">
+                <h3>Recent Time Entries</h3>
+                <div id="time-entries"></div>
+            </div>
+        </div>
+    </div>
+<script>
+        // Base Authentication System
         class EnterpriseAuthSystem {
             constructor() {
                 this.users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -229,18 +306,21 @@
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('registration-screen').style.display = 'none';
                 document.getElementById('password-reset-screen').style.display = 'none';
+                document.getElementById('dashboard-screen').style.display = 'none';
             }
 
             showRegistrationScreen() {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('registration-screen').style.display = 'flex';
                 document.getElementById('password-reset-screen').style.display = 'none';
+                document.getElementById('dashboard-screen').style.display = 'none';
             }
 
             showPasswordResetScreen() {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('registration-screen').style.display = 'none';
                 document.getElementById('password-reset-screen').style.display = 'flex';
+                document.getElementById('dashboard-screen').style.display = 'none';
             }
 
             handleLogin(e) {
@@ -253,7 +333,7 @@
                 if (user) {
                     this.currentUser = user;
                     this.showToast('Login Successful!');
-                    // TODO: Redirect to dashboard or load dashboard content
+                    this.showDashboard();
                 } else {
                     this.showToast('Invalid credentials', true);
                 }
@@ -268,19 +348,16 @@
                 const confirmPassword = document.getElementById('reg-confirm-password').value;
                 const department = document.getElementById('reg-department').value;
 
-                // Basic validation
                 if (password !== confirmPassword) {
                     this.showToast('Passwords do not match', true);
                     return;
                 }
 
-                // Check if user already exists
                 if (this.users.some(u => u.username === username || u.email === email)) {
                     this.showToast('Username or email already exists', true);
                     return;
                 }
 
-                // Create new user
                 const newUser = {
                     id: Date.now(),
                     fullName,
@@ -302,23 +379,162 @@
             handlePasswordReset(e) {
                 e.preventDefault();
                 const email = document.getElementById('reset-email').value;
-
-                // Find user by email
                 const user = this.users.find(u => u.email === email);
 
                 if (user) {
-                    // In a real application, this would send an email
-                    // Here we'll just simulate a reset
                     this.showToast('Password reset link sent to your email');
+                    this.showLoginScreen();
                 } else {
                     this.showToast('No account found with this email', true);
                 }
             }
         }
 
-        // Initialize the authentication system
+        // TimeClock System that extends the base Authentication System
+        class TimeClockSystem extends EnterpriseAuthSystem {
+            constructor() {
+                super();
+                this.timeEntries = JSON.parse(localStorage.getItem('timeEntries') || '[]');
+                this.initializeTimeClock();
+            }
+
+            initializeTimeClock() {
+                document.getElementById('clock-in-btn')?.addEventListener('click', this.handleClockIn.bind(this));
+                document.getElementById('clock-out-btn')?.addEventListener('click', this.handleClockOut.bind(this));
+                document.getElementById('break-btn')?.addEventListener('click', this.handleBreak.bind(this));
+                document.getElementById('logout-btn')?.addEventListener('click', this.handleLogout.bind(this));
+
+                this.updateClockDisplay();
+                setInterval(this.updateClockDisplay.bind(this), 1000);
+            }
+
+            updateClockDisplay() {
+                const clockDisplay = document.getElementById('current-time');
+                if (clockDisplay) {
+                    clockDisplay.textContent = new Date().toLocaleTimeString();
+                }
+            }
+
+            handleClockIn() {
+                if (!this.currentUser) return;
+
+                const clockInTime = new Date();
+                const entry = {
+                    userId: this.currentUser.id,
+                    type: 'clock-in',
+                    timestamp: clockInTime.toISOString(),
+                    date: clockInTime.toLocaleDateString()
+                };
+
+                this.timeEntries.push(entry);
+                localStorage.setItem('timeEntries', JSON.stringify(this.timeEntries));
+
+                document.getElementById('clock-in-btn').style.display = 'none';
+                document.getElementById('clock-out-btn').style.display = 'block';
+                this.updateClockStatus('Clocked In');
+                this.updateTimeEntries();
+                this.showToast('Successfully clocked in!');
+            }
+
+            handleClockOut() {
+                if (!this.currentUser) return;
+
+                const clockOutTime = new Date();
+                const entry = {
+                    userId: this.currentUser.id,
+                    type: 'clock-out',
+                    timestamp: clockOutTime.toISOString(),
+                    date: clockOutTime.toLocaleDateString()
+                };
+
+                this.timeEntries.push(entry);
+                localStorage.setItem('timeEntries', JSON.stringify(this.timeEntries));
+
+                document.getElementById('clock-in-btn').style.display = 'block';
+                document.getElementById('clock-out-btn').style.display = 'none';
+                this.updateClockStatus('Clocked Out');
+                this.updateTimeEntries();
+                this.showToast('Successfully clocked out!');
+            }
+
+            handleBreak() {
+                if (!this.currentUser) return;
+
+                const breakBtn = document.getElementById('break-btn');
+                const isOnBreak = breakBtn.textContent === 'End Break';
+
+                const entry = {
+                    userId: this.currentUser.id,
+                    type: isOnBreak ? 'break-end' : 'break-start',
+                    timestamp: new Date().toISOString(),
+                    date: new Date().toLocaleDateString()
+                };
+
+                this.timeEntries.push(entry);
+                localStorage.setItem('timeEntries', JSON.stringify(this.timeEntries));
+
+                breakBtn.textContent = isOnBreak ? 'Start Break' : 'End Break';
+                this.updateClockStatus(isOnBreak ? 'Clocked In' : 'On Break');
+                this.updateTimeEntries();
+                this.showToast(isOnBreak ? 'Break ended' : 'Break started');
+            }
+
+            updateClockStatus(status) {
+                const statusElement = document.getElementById('clock-status');
+                statusElement.textContent = status;
+                statusElement.className = 'status-indicator ' + 
+                    (status === 'Clocked In' ? 'status-clocked-in' : 'status-clocked-out');
+            }
+
+            updateTimeEntries() {
+                const entriesContainer = document.getElementById('time-entries');
+                const userEntries = this.timeEntries
+                    .filter(entry => entry.userId === this.currentUser.id)
+                    .slice(-10)
+                    .reverse();
+
+                entriesContainer.innerHTML = userEntries.map(entry => `
+                    <div class="time-log-entry">
+                        <span>${entry.type.replace('-', ' ').toUpperCase()}</span>
+                        <span>${new Date(entry.timestamp).toLocaleString()}</span>
+                    </div>
+                `).join('');
+            }
+
+            showDashboard() {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('registration-screen').style.display = 'none';
+                document.getElementById('password-reset-screen').style.display = 'none';
+                document.getElementById('dashboard-screen').style.display = 'block';
+                
+                document.getElementById('user-welcome').textContent = `Welcome, ${this.currentUser.fullName}`;
+                document.getElementById('user-department').textContent = `Department: ${this.currentUser.department}`;
+                
+                const lastEntry = this.timeEntries
+                    .filter(entry => entry.userId === this.currentUser.id)
+                    .pop();
+
+                if (lastEntry?.type === 'clock-in') {
+                    document.getElementById('clock-in-btn').style.display = 'none';
+                    document.getElementById('clock-out-btn').style.display = 'block';
+                    this.updateClockStatus('Clocked In');
+                } else {
+                    this.updateClockStatus('Clocked Out');
+                }
+
+                this.updateTimeEntries();
+            }
+
+            handleLogout() {
+                this.currentUser = null;
+                this.showLoginScreen();
+                this.showToast('Logged out successfully');
+            }
+        }
+
+        // Initialize the time clock system
         document.addEventListener('DOMContentLoaded', () => {
-            new EnterpriseAuthSystem();
+            new TimeClockSystem();
         });
     </script>
 </body>
